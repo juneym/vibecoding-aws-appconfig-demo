@@ -1,0 +1,16 @@
+{
+  "name": "aws-appconfig-demo",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-appconfig": "^3.883.0",
+    "@aws-sdk/client-appconfigdata": "^3.883.0",
+    "express": "^5.1.0",
+    "js-yaml": "^4.1.0",
+    "pino": "^9.3.2"
+  }
+}
