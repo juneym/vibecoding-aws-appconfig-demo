@@ -4,7 +4,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "npm run build && node dist/index.js",
+    "build": "tsc"
   },
   "dependencies": {
     "@aws-sdk/client-appconfig": "^3.883.0",
@@ -12,5 +13,11 @@
     "express": "^5.1.0",
     "js-yaml": "^4.1.0",
     "pino": "^9.3.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.3.1",
+    "typescript": "^5.9.2"
   }
 }
