@@ -10,6 +10,7 @@
   export AWS_ACCESS_KEY_ID=<....value...>
   export AWS_SECRET_ACCESS_KEY=<...value...>
   export AWS_REGION=<value>
+  export CONFIG_PREFIX="dev4_"
 ```
 
 2. Run the application
