@@ -6,6 +6,7 @@ const configService = new AWSAppConfig({
   environmentId: process.env.APPCONFIG_ENVIRONMENT_ID!,
   region: process.env.AWS_REGION!,
   pollIntervalMs: 30000,
+  discoveryIntervalMs: 120000,
 });
 
 /* Set configuration prefix if provided so that any config that has prefix 

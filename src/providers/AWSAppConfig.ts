@@ -36,6 +36,7 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
     #data: AppConfigDataClient;
     #opts: any;
     #timers = new Map<string, NodeJS.Timeout>();
+    #discoveryTimer?: NodeJS.Timeout;
     #tokens = new Map<string, string>();
     #hashes = new Map<string, string>();
     #closed = false;
@@ -77,12 +78,22 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
         return defaultValue;
     }
 
-    constructor(opts: { applicationId: string; environmentId: string; region: string; pollIntervalMs?: number }) {
+    /**
+     * Constructs an instance of the AWSAppConfig class.
+     * @param opts - The options for the configuration service.
+     * @param opts.applicationId - The ID of the application.
+     * @param opts.environmentId - The ID of the environment.
+     * @param opts.region - The AWS region.
+     * @param opts.pollIntervalMs - The polling interval in milliseconds for configuration values
+     * @param opts.discoveryIntervalMs - The discovery interval in milliseconds for configuration profiles
+     */
+    constructor(opts: { applicationId: string; environmentId: string; region: string; pollIntervalMs?: number, discoveryIntervalMs?: number }) {
         super();
         if (!opts?.applicationId || !opts?.environmentId || !opts?.region) {
             throw new Error("applicationId, environmentId, and region are required");
         }
-        this.#opts = { pollIntervalMs: 30000, ...opts };
+        // Default discovery interval to 5 minutes
+        this.#opts = { pollIntervalMs: 30000, discoveryIntervalMs: 300000, ...opts };
         this.#control = new AppConfigClient({ region: this.#opts.region });
         this.#data = new AppConfigDataClient({ region: this.#opts.region });
     }
@@ -95,13 +106,10 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
      * @returns {Promise<void>} A promise that resolves when all profiles have been started
      */
     async start(): Promise<void> {
-        let profiles = await this.#listProfiles();
-
-        if (this.#configPrefix) {
-            profiles = profiles.filter(p => p.Name?.startsWith(this.#configPrefix));
-        }
-
-        await Promise.all(profiles.map(p => this.#startProfile(p)))
+        const profiles = await this.#discoverProfiles();
+        
+        // Start periodic discovery
+        this.#discoveryTimer = setInterval(() => this.#discoverProfiles(), this.#opts.discoveryIntervalMs);
         this.emit("ready", { profiles: profiles.map(p => p.Name) });
     }
 
@@ -112,6 +120,7 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
      */
     close(): void {
         this.#closed = true;
+        if (this.#discoveryTimer) clearInterval(this.#discoveryTimer);
         for (const timer of this.#timers.values()) clearTimeout(timer);
         this.#timers.clear();
         this.#tokens.clear();
@@ -134,6 +143,36 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
         });
         const res = await this.#control.send(cmd);
         return res.Items || [];
+    }
+
+    /**
+     * Discovers and starts polling for new configuration profiles.
+     * It lists profiles from AWS AppConfig, filters them based on the prefix,
+     * and starts polling for any new profiles not already being tracked.
+     *
+     * @private
+     * @returns {Promise<any[]>} A promise that resolves with the list of profiles found in this discovery cycle.
+     */
+    async #discoverProfiles(): Promise<any[]> {
+        this.emit("debug", { message: "Discovering configuration profiles..." });
+        try {
+            let profiles = await this.#listProfiles();
+
+            if (this.#configPrefix) {
+                profiles = profiles.filter(p => p.Name?.startsWith(this.#configPrefix));
+            }
+
+            const newProfiles = profiles.filter(p => p.Name && !this.#timers.has(p.Name));
+
+            if (newProfiles.length > 0) {
+                this.emit("debug", { message: `Found ${newProfiles.length} new profiles to track.` });
+                await Promise.all(newProfiles.map(p => this.#startProfile(p)));
+            }
+            return profiles;
+        } catch (err) {
+            this.emit("error", { type: "error", profile: "discovery", error: err });
+            return [];
+        }
     }
 
     /**
