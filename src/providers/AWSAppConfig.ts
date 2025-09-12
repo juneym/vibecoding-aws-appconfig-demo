@@ -53,8 +53,8 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
         this.#configPrefix = prefix;
     }
 
-    getConfigs(): any[] {
-        return Object.values(this.#configsCache);
+    getConfigs(): Record<string, any> {
+        return { ...this.#configsCache };
     }
 
     /**
@@ -191,7 +191,6 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
 
                 if (hash !== currentHash) {
                     const config = {
-                        raw,
                         parsed: parseConfig(raw, res.ContentType),
                         contentType: res.ContentType,
                         // @ts-ignore

@@ -11,7 +11,7 @@ export interface ConfigurationServiceInterface {
    * This method may perform asynchronous operations such as fetching from a remote source.
    * @returns any[]
    */
-  getConfigs(): any[]
+  getConfigs(): Record<string, any>
 
   /**
    * Retrieves a configuration value by its name.
