@@ -23,7 +23,7 @@ npm start
 
 ```bash
 curl http://localhost:3000/configs_all
-curl http://localhost:3000/config?name=dev4_feature_flags
+curl http://localhost:3000/config?name=feature_flags
 ```
 
 
