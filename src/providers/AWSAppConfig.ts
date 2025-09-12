@@ -95,8 +95,14 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
      * @returns {Promise<void>} A promise that resolves when all profiles have been started
      */
     async start(): Promise<void> {
-        const profiles = await this.#listProfiles();
-        await Promise.all(profiles.map(p => this.#startProfile(p)));
+        let profiles = await this.#listProfiles();
+
+        if (this.#configPrefix) {
+            profiles = profiles.filter(p => p.Name?.startsWith(this.#configPrefix));
+        }
+
+        await Promise.all(profiles.map(p => this.#startProfile(p)))
+        this.emit("ready", { profiles: profiles.map(p => p.Name) });
     }
 
     /**
@@ -200,7 +206,7 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
                     // Atomically update caches only after successful processing
                     this.#hashes.set(profile.Name, hash);
                     this.#configsCache[profile.Name] = config;
-                    this.emit("update", { type: "update", profile: profile.Name, config });
+                    this.emit("update", { type: "update", profile: profile.Name, config: config.parsed });
                 }
             }
             if (res.NextPollConfigurationToken) {

@@ -16,7 +16,7 @@ if (process.env.CONFIG_PREFIX) {
 }
 
 configService.on("ready", ({ profiles }) => console.log(new Date().toISOString(), "[CONFIG_READY] ConfigService: Loaded profiles", profiles));
-configService.on("update", ({ profile }) => console.log(new Date().toISOString(), "[CONFIG_UPDATED] ConfigService: Updated", profile));
+configService.on("update", ({ profile, config }) => console.log(new Date().toISOString(), "[CONFIG_UPDATED] ConfigService: Updated", profile, config));
 configService.on("debug", (eparam) => console.log(new Date().toISOString(), `[DEBUG] ConfigService: Debug  ${eparam.message}`));
 
 (async () => {
@@ -29,7 +29,8 @@ configService.on("debug", (eparam) => console.log(new Date().toISOString(), `[DE
     if (!name || typeof name !== "string") {
       return res.status(400).json({ error: "Name parameter is required" });
     }
-    const config = configService.getConfig(name, null);
+    // The prefix is handled by getConfig, so we pass the name without it.
+    const config = configService.getConfig(name.replace(process.env.CONFIG_PREFIX || "", ""), null);
     if (config) {
       res.json(config);
     } else {
