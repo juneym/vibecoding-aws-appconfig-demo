@@ -8,6 +8,13 @@ const configService = new AWSAppConfig({
   pollIntervalMs: 30000,
 });
 
+/* Set configuration prefix if provided so that any config that has prefix 
+ * like dev4_ as in dev4_feature_flags  can be accessed using "feature_flags" only 
+ */
+if (process.env.CONFIG_PREFIX) {
+  configService.setConfigPrefix(process.env.CONFIG_PREFIX);
+}
+
 configService.on("ready", ({ profiles }) => console.log(new Date().toISOString(), "[CONFIG_READY] ConfigService: Loaded profiles", profiles));
 configService.on("update", ({ profile }) => console.log(new Date().toISOString(), "[CONFIG_UPDATED] ConfigService: Updated", profile));
 configService.on("debug", (eparam) => console.log(new Date().toISOString(), `[DEBUG] ConfigService: Debug  ${eparam.message}`));

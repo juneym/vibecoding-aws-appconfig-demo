@@ -1,4 +1,11 @@
 export interface ConfigurationServiceInterface {
+
+  /** Set the configuration prefix
+   * This prefix will be added to all configuration keys.
+   * @param prefix - The prefix to set.
+   */
+  setConfigPrefix(prefix: string): void;
+
   /**
    * Returns an array of all configuration objects.
    * This method may perform asynchronous operations such as fetching from a remote source.

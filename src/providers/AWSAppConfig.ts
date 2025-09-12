@@ -39,17 +39,40 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
     #tokens = new Map<string, string>();
     #hashes = new Map<string, string>();
     #closed = false;
+    #configPrefix: string = "";
 
     /** { [profileName]: { raw, parsed, contentType, version, updatedAt } } */
     #configsCache: Record<string, any> = {};
+
+    /**
+     * Sets the configuration prefix.
+     * This prefix will be added to all configuration keys.
+     * @param prefix - The prefix to set.
+     */
+    setConfigPrefix(prefix: string): void {
+        this.#configPrefix = prefix;
+    }
 
     getConfigs(): any[] {
         return Object.values(this.#configsCache);
     }
 
+    /**
+     * Retrieves a parsed configuration value by its name.
+     *
+     * This method prepends the configured prefix (if any) to the requested configuration name
+     * before looking it up in the internal cache. If the configuration is found, its parsed
+     * value is returned. Otherwise, the provided default value is returned.
+     *
+     * @param name - The name of the configuration to retrieve.
+     * @param defaultValue - The value to return if the configuration is not found.
+     * @returns The parsed configuration value, or the default value if not found.
+     */
     getConfig(name: string, defaultValue: any): any {
-        if (name in this.#configsCache) {
-            return this.#configsCache[name].parsed;
+
+        let realConfigName = `${this.#configPrefix}${name}`;
+        if (realConfigName in this.#configsCache) {
+            return this.#configsCache[realConfigName].parsed;
         }
         return defaultValue;
     }
@@ -164,16 +187,19 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
             const raw = textDecoder.decode(res.Configuration);
             if (typeof raw === "string" && raw.trim() !== "") {
                 const hash = stableHash(raw);
-                if (hash !== this.#hashes.get(profile.Name)) {
-                    this.#hashes.set(profile.Name, hash);
+                const currentHash = this.#hashes.get(profile.Name);
+
+                if (hash !== currentHash) {
                     const config = {
                         raw,
                         parsed: parseConfig(raw, res.ContentType),
                         contentType: res.ContentType,
                         // @ts-ignore
                         version: res.VersionNumber,
-                        updatedAt: new Date()
+                        updatedAt: new Date(),
                     };
+                    // Atomically update caches only after successful processing
+                    this.#hashes.set(profile.Name, hash);
                     this.#configsCache[profile.Name] = config;
                     this.emit("update", { type: "update", profile: profile.Name, config });
                 }
