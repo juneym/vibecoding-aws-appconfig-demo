@@ -1,12 +1,13 @@
 import { EventEmitter } from "node:events";
 import {
   AppConfigClient,
-  ListConfigurationProfilesCommand
+  ListConfigurationProfilesCommand,
 } from "@aws-sdk/client-appconfig";
 import {
   AppConfigDataClient,
   StartConfigurationSessionCommand,
-  GetLatestConfigurationCommand
+  GetLatestConfigurationCommand,
+  ResourceNotFoundException
 } from "@aws-sdk/client-appconfigdata";
 import yaml from "js-yaml";
 import { ConfigurationServiceInterface } from "../ConfigurationServiceInterface";
@@ -199,6 +200,21 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
         this.#tokens.set(profile.Name, res.InitialConfigurationToken);
         await this.#pollOnce(profile);
     }
+    
+    /**
+     * Stops polling for a given profile and cleans up its resources.
+     * @param profile - The configuration profile to stop.
+     */
+    #stopProfile(profile: any): void {
+        const profileName = profile.Name;
+        if (!profileName) return;
+
+        const timer = this.#timers.get(profileName);
+        if (timer) clearTimeout(timer);
+        this.#timers.delete(profileName);
+        this.#tokens.delete(profileName);
+        this.#hashes.delete(profileName);
+    }
 
     /**
      * Polls AWS AppConfig for configuration updates for a specific profile.
@@ -252,6 +268,11 @@ export class AWSAppConfig extends EventEmitter implements ConfigurationServiceIn
                 this.#tokens.set(profile.Name, res.NextPollConfigurationToken);
             }
         } catch (err) {
+            if (err instanceof ResourceNotFoundException) {
+                this.emit("profile_deleted", { type: "profile_deleted", profile: profile.Name, error: err });
+                this.#stopProfile(profile);
+                return; // Stop further processing for this profile
+            }
             this.emit("error", { type: "error", profile: profile.Name, error: err });
         }
         this.#timers.set(

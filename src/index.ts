@@ -19,6 +19,7 @@ if (process.env.CONFIG_PREFIX) {
 configService.on("ready", ({ profiles }) => console.log(new Date().toISOString(), "[CONFIG_READY] ConfigService: Loaded profiles", profiles));
 configService.on("update", ({ profile, config }) => console.log(new Date().toISOString(), "[CONFIG_UPDATED] ConfigService: Updated", profile, config));
 configService.on("debug", (eparam) => console.log(new Date().toISOString(), `[DEBUG] ConfigService: Debug  ${eparam.message}`));
+configService.on("profile_deleted", ({ profile, error }) => console.error(new Date().toISOString(), "[CONFIG_REMOVED] ConfigService: Error on profile", profile, error.message));
 
 (async () => {
   await configService.start();
